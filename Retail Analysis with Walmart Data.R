@@ -1,0 +1,253 @@
+library(dplyr)
+library(ggplot2)
+library(lubridate)
+library(zoo)
+library(tidyverse)
+data1 = read.csv("Walmart_Store_sales.csv",header=TRUE,sep=",")
+View(data1)
+
+# data understanding
+names(data1)
+dim(data1)
+str(data1)
+summary(data1)
+table(data1$Store)
+
+
+
+
+# Task 1: DETERMINE WHICH STORE HAS MAXIMUM SALES
+
+# Creating data frame with stores ordered by sales: 
+sales_ranks = arrange(data.frame
+                      (summarise(group_by(data1,Store)
+                      ,tot=sum(Weekly_Sales)))
+                      ,desc(tot))
+
+# Calling data frame for final analysis
+sales_ranks
+# Store 20 has maximum sales
+
+
+
+
+# Task 2: DETERMINE WHICH STORE HAS HIGHEST STANDARD DEVIATION AND ITS
+# COEFFICIENT OF VARIATION
+
+# Creating data frame with sd, avg, and cv of weekly sales of stores,
+# ordered by sd of sales:
+sd_ranks = arrange(data.frame
+                   (summarise
+                     (group_by(data1,Store)
+                       ,sd=sd(Weekly_Sales)
+                       ,avg=mean(Weekly_Sales)
+                       ,cv=(sd(Weekly_Sales)/(mean(Weekly_Sales)))))
+                   ,desc(sd))
+
+# Calling data frame for final analysis
+sd_ranks
+
+# Store 14 has the highest standard deviation in sales at $317,569.95
+# It's coefficient of variance is 0.1573674, which means the typical sales week
+# diverges from the mean by almost 16%
+
+
+
+
+# Task 3: DETERMINE WHICH STORES HAD GOOD QUARTERLY GROWTH RATE IN 2012 Q3
+
+# Creating table with store sales % increase data for Q3'2012 arranged by % 
+# increase :
+# 1-Convert Date format
+# 2-Create a frame for Q2 and Q3 sales
+# 3-Add % increase calculation and put in order
+
+# Converting Date data to common format
+data1$Date = chartr("-", "/", data1$Date)
+
+# Adding a column to the data frame to show sales year and quarter
+data1$Year_Qtr = as.yearqtr(data1$Date, format = "%d/%m/%Y")
+
+# Creating a data frame with sales data from Quarters 2 and 3 of 2012
+
+#Creating a new data frame with data from 2012 Q2
+sales_data_2012Q2 = data1[data1$Year_Qtr == "2012 Q2",]
+data.frame(sales_data_2012Q2)
+
+#Creating a new data frame with data from 2012 Q3
+sales_data_2012Q3 = data1[data1$Year_Qtr == "2012 Q3",]
+data.frame(sales_data_2012Q3)
+
+# Grouping sales data by store 
+sales_by_store_Q2 = arrange(data.frame
+                            (summarise
+                              (group_by(sales_data_2012Q2, Store)
+                               ,Q2_Sales_Tot = sum(Weekly_Sales))))
+
+sales_by_store_Q3 = arrange(data.frame
+                            (summarise
+                              (group_by(sales_data_2012Q3, Store)
+                                ,Q3_Sales_Tot = sum(Weekly_Sales))))
+
+# Merging Tables
+Qtrly_Sales_Change = merge(sales_by_store_Q2,sales_by_store_Q3,by="Store")
+
+#Adding a column for % sales increase
+Qtrly_Sales_Change$Pct_Increase = 
+    ((Qtrly_Sales_Change$Q3_Sales_Tot-Qtrly_Sales_Change$Q2_Sales_Tot)/
+     Qtrly_Sales_Change$Q2_Sales_Tot)*100
+
+# Arranging data by sales increase
+Qtrly_Sales_Change = arrange(Qtrly_Sales_Change
+                             , desc(Qtrly_Sales_Change$Pct_Increase))
+
+# Calling data frame for final analysis
+Qtrly_Sales_Change
+
+# STORE 7 HAD THE GREATEST GROWTH IN 2012 Q3, FOLLOWED BY STORES 16, 35, & 26
+
+
+
+
+# Task 4: DETERMINE WHICH HOLIDAYS HAVE HIGHER SALES THAN THE MEAN SALES IN 
+# NON-HOLIDAY SEASON FOR ALL STORES TOGETHER:
+
+#1-separate holiday and non-holiday
+#2-group non-holiday into one row and holiday by month (EXTRACT MONTH)
+#3 add means for both tables
+#4 combine into single frame
+
+# Creating table of sales during holidays
+holiday_sales = data1[data1$Holiday_Flag =="1",]
+holiday_sales$Month = format(as.Date(holiday_sales$Date, format="%d/%m/%Y")
+                             ,"%m")
+
+# Creating average sales values by holiday
+holiday_sales_avgs = arrange(summarise
+                              (group_by(holiday_sales, Month)
+                                ,Avg_Sales = mean(Weekly_Sales)))
+
+# Creating table of non-holiday sales
+non_holiday_sales = data1[data1$Holiday_Flag =="0",]
+
+# Creating average non-holiday sales value
+non_holiday_sales_avg = mean(non_holiday_sales$Weekly_Sales)
+
+# Creating data frame to compare holiday to non-holiday sales
+holiday_vs_non_holiday = holiday_sales_avgs
+holiday_vs_non_holiday$non_holiday_sales_avg = non_holiday_sales_avg
+holiday_vs_non_holiday$diff_from_avg = (holiday_vs_non_holiday$Avg_Sales
+  -holiday_vs_non_holiday$non_holiday_sales_avg)
+holiday_vs_non_holiday$Month = c("Super Bowl","Labor Day","Thanksgiving"
+                                 ,"Christmas")
+colnames(holiday_vs_non_holiday)[1] = "Holiday"
+
+#Calling data frame for final analysis
+holiday_vs_non_holiday
+
+# SUPERBOWL WEEK, LABOR DAY, AND THANKSGIVING ALL HAVE HIGHER AVERAGE WEEKLY
+# SALES THAN THE WEEKLY NON-HOLIDAY AVERAGE, WITH THANKSGIVING BEING 
+# SUBSTANTIALLY HIGHER. THE ONLY HOLIDAY WITH AVERAGE SALES BELOW THE 
+# NON-HOLIDAY AVERAGE IS CHRISTMAS. THIS INITIALLY SEEMS TO BE A SURPRISING 
+# RESULT, BUT THE LARGE INCREASE DURING THANKSGIVING AND SLIGHT DECREASE AT
+# CHRISTMAS ARE IN LINE WITH TRADITIONAL CONSUMER SHOPPING HABITS: MOST
+# PEOPLE BEGIN THEIR CHRISTMAS SHOPPING THE DAY AFTER THANKSGIVING AND ARE
+# FINISHED BY THE TIME THE WEEK OF CHRISTMAS ARRIVES. IT MAY BE WISE TO FLAG ALL
+# OF DECEMBER AS HOLIDAY SHOPPING RATHER THAN JUST THE WEEK OF CHRISTMAS
+
+
+
+
+# Task 5: PROVIDE MONTHLY AND SEMESTER VIEWS OF SALES AND GIVE INSIGHTS
+
+# 1- Add columns to data1 for month/year and semester/year 
+#     - If semester/year column doesn't work, create a flag using a conditional
+#     - based on the Year column and group by flag
+# 2- Create a data frame or table grouping by month/year
+# 3- Create a data frame or table grouping by semester
+# 4- Plot data
+# 5- Conclusions
+
+# Adding Month_Year column to data frame
+data1$Year_Month = format(as.Date(data1$Date, format="%d/%m/%Y"),"%Y/%m")
+
+# Adding Semester and Year columns to data frame
+data1$Year = format(as.Date(data1$Date, format="%d/%m/%Y"),"%Y")
+data1$Semester = semester(data1$Date, with_year = FALSE)
+
+# Creating data frame of sales by month
+sales_by_month = data.frame(summarise
+                            (group_by(data1, Year_Month)
+                             ,Monthly_Sales = sum(Weekly_Sales)))
+
+# Creating data frame of sales by semester
+sales_by_semester = data1 %>% group_by(Year,Semester) %>%
+                      summarise(Semester_Sales = sum(Weekly_Sales))
+
+str(sales_by_semester)
+sales_by_semester$Semester = as.character(sales_by_semester$Semester)
+str(sales_by_semester)
+sales_by_semester$Year_Semester = paste(sales_by_semester$Year, sales_by_semester$Semester)
+str(sales_by_semester)
+sales_by_semester = subset(sales_by_semester, select=-c(Year,Semester))
+
+# Creating plot of sales by semester
+ggplot(data = sales_by_semester, aes(x = Year_Semester, y = Semester_Sales, group=1)) +
+  geom_line()+
+  geom_point()
+
+# Semesterly sales observations: Incomplete data for 1st semester 2010 and 2nd semester 2012.
+# 2nd semester sales usually higher than 1st. Growth seen when comparing semesters in 
+# subsequent years
+
+# Creating a plot of sales by month
+ggplot(data = sales_by_month, aes(x = Year_Month, y = Monthly_Sales, group=1)) +
+  geom_line()+
+  geom_point()
+
+# Monthly sales observations: Biggest spikes are at Christmas season, with other
+# spikes in April and July
+
+
+
+
+#Task 6: BUILD A REGRESSION MODEL TO PREDICT SALES
+# Building multiple regression model to predict sales
+
+# Converting dates to sequential integers
+data2 = read.csv("Walmart_Store_sales.csv", header = TRUE, sep = ",")
+str(data2)
+data2$Date = chartr("-", "/", data2$Date)
+data2$Date = as.Date(data2$Date, format = "%d/%m/%Y")
+str(data2)
+data2$Numbered_Week = as.integer(data2$Date)
+
+data2 = subset(data2, select=-c(Date))
+
+
+library(caTools)
+set.seed(1)
+
+sample = sample.split(data2$Weekly_Sales,SplitRatio=0.70)
+sample
+train_data = subset(data2,sample==TRUE)
+test_data = subset(data2,sample==FALSE)
+
+model = lm(Weekly_Sales ~ ., data = train_data)
+summary(model)
+
+#Re-running model with significant variables from first run
+model2 = lm(Weekly_Sales ~ Store+Holiday_Flag+CPI+Unemployment,data=train_data)
+summary(model2)
+
+predtest = predict(model2,test_data) 
+head(predtest) 
+
+predtest1 = data.frame(predtest)
+final_data<- cbind(test_data,predtest1)
+
+sqrt(mean((final_data$Weekly_Sales - final_data$predtest)^2))
+
+# Store, Holiday_Flag, CPI, and Unemployment were the indicated significant
+# variables in predicting sales, but they do not appear to create a reliable 
+# prediction model.
