@@ -68,7 +68,3 @@ Linear Regression – Utilize variables like date and restructure dates as 1 for
 Change dates into days by creating new variable.
 
 Select the model which gives best accuracy.
-
-Files:
-[Analysis of Walmart Data.txt](https://github.com/dalton-wilson/WalmartSalesData-R/files/10570285/Analysis.of.Walmart.Data.txt)
-[Walmart_Store_sales.csv](https://github.com/dalton-wilson/WalmartSalesData-R/files/10570288/Walmart_Store_sales.csv)
